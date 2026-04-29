@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ernes Fitness App</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --blue: #185FA5;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --green-light: #EAF3DE;
+    --green-dark: #27500A;
+    --amber-light: #FAEEDA;
+    --amber-dark: #633806;
+    --red-light: #FCEBEB;
+    --red-dark: #791F1F;
+    --bg: #ffffff;
+    --bg2: #f5f5f3;
+    --bg3: #eeede8;
+    --text: #1a1a1a;
+    --text2: #666660;
+    --text3: #999992;
+    --border: rgba(0,0,0,0.12);
+    --border2: rgba(0,0,0,0.22);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --radius-xl: 16px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a; --bg2: #242424; --bg3: #2e2e2e;
+      --text: #f0f0f0; --text2: #aaaaaa; --text3: #666666;
+      --border: rgba(255,255,255,0.12); --border2: rgba(255,255,255,0.22);
+      --blue-light: #0c2a47; --blue-dark: #85B7EB;
+      --green-light: #1a2e0a; --green-dark: #C0DD97;
+      --amber-light: #2e1e00; --amber-dark: #FAC775;
+      --red-light: #2e0a0a; --red-dark: #F09595;
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg3); color: var(--text); min-height: 100vh; }
+
+  /* PIN SCREEN */
+  #pin-screen { position: fixed; inset: 0; background: var(--bg); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; }
+  .pin-logo { width: 72px; height: 72px; background: var(--blue-light); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+  .pin-logo svg { width: 36px; height: 36px; }
+  .pin-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; }
+  .pin-sub { font-size: 14px; color: var(--text2); margin-bottom: 32px; }
+  .pin-dots { display: flex; gap: 16px; margin-bottom: 32px; }
+  .pin-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--border2); background: transparent; transition: background 0.15s; }
+  .pin-dot.filled { background: var(--blue); border-color: var(--blue); }
+  .pin-dot.error { background: #E24B4A; border-color: #E24B4A; }
+  .pin-grid { display: grid; grid-template-columns: repeat(3, 72px); gap: 12px; }
+  .pin-btn { width: 72px; height: 72px; border-radius: 50%; border: 0.5px solid var(--border); background: var(--bg2); font-size: 22px; font-weight: 500; cursor: pointer; color: var(--text); display: flex; align-items: center; justify-content: center; transition: background 0.1s; }
+  .pin-btn:active { background: var(--bg3); transform: scale(0.95); }
+  .pin-error { color: #E24B4A; font-size: 13px; margin-top: 16px; height: 20px; }
+
+  /* APP SHELL */
+  #app { display: none; max-width: 480px; margin: 0 auto; padding-bottom: 80px; min-height: 100vh; background: var(--bg3); }
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  /* NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: var(--bg); border-top: 0.5px solid var(--border); display: flex; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); z-index: 100; }
+  .nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 4px; border: none; background: none; cursor: pointer; color: var(--text3); font-size: 10px; }
+  .nav-btn.active { color: var(--blue); }
+  .nav-btn svg { width: 22px; height: 22px; }
+
+  /* CARDS */
+  .card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 12px; }
+  .card-blue { background: var(--blue-light); border-color: #B5D4F4; }
+  .section-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: var(--text); }
+
+  /* METRICS */
+  .metric-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-bottom: 12px; }
+  .metric { background: var(--bg); border-radius: var(--radius); padding: 14px; border: 0.5px solid var(--border); }
+  .metric-label { font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .metric-val { font-size: 22px; font-weight: 600; color: var(--text); }
+  .metric-unit { font-size: 13px; font-weight: 400; color: var(--text2); }
+
+  /* TAGS */
+  .tag { display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600; }
+  .tag-blue { background: var(--blue-light); color: var(--blue-dark); }
+  .tag-green { background: var(--green-light); color: var(--green-dark); }
+  .tag-amber { background: var(--amber-light); color: var(--amber-dark); }
+  .tag-red { background: var(--red-light); color: var(--red-dark); }
+
+  /* BUTTONS */
+  .btn { border: 0.5px solid var(--border2); background: var(--bg); border-radius: var(--radius); padding: 10px 16px; font-size: 14px; cursor: pointer; color: var(--text); font-family: inherit; transition: opacity 0.1s; }
+  .btn:active { opacity: 0.7; }
+  .btn-primary { background: var(--blue); color: #fff; border-color: var(--blue); font-weight: 600; }
+  .btn-success { background: var(--green-light); color: var(--green-dark); border-color: #C0DD97; }
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+  .btn-block { width: 100%; }
+
+  /* PROGRESS */
+  .progress-wrap { background: var(--bg3); border-radius: 20px; height: 10px; overflow: hidden; margin: 8px 0; }
+  .progress-bar { height: 100%; border-radius: 20px; background: var(--blue); transition: width 0.6s ease; }
+
+  /* WEEK GRID */
+  .week-grid { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 4px; margin-bottom: 16px; }
+  .day-pill { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 2px; border-radius: var(--radius); border: 0.5px solid var(--border); background: var(--bg); }
+  .day-pill.train { background: var(--blue-light); border-color: #B5D4F4; }
+  .day-pill.today { border: 2px solid var(--blue); }
+  .day-name { font-size: 10px; color: var(--text2); font-weight: 500; }
+  .day-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border2); }
+  .day-pill.train .day-dot { background: var(--blue); }
+
+  /* EXERCISE CARD */
+  .ex-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 14px; overflow: hidden; }
+  .ex-img { width: 100%; height: 200px; object-fit: cover; background: var(--bg2); display: block; }
+  .ex-img-placeholder { width: 100%; height: 200px; background: var(--bg2); display: flex; align-items: center; justify-content: center; }
+  .ex-body { padding: 14px; }
+  .ex-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .ex-name { font-size: 15px; font-weight: 600; color: var(--text); }
+  .ex-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .ex-chip { background: var(--bg2); border-radius: var(--radius); padding: 5px 10px; font-size: 12px; color: var(--text2); }
+  .ex-tip { font-size: 13px; color: var(--text2); line-height: 1.6; background: var(--bg2); border-radius: var(--radius); padding: 10px 12px; margin-bottom: 12px; }
+  .ex-actions { display: flex; gap: 8px; }
+  .week-badge { position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 20px; font-weight: 600; }
+  .ex-img-wrap { position: relative; }
+
+  /* SUPPLEMENT */
+  .supp-row { display: flex; align-items: center; gap: 12px; padding: 11px 0; border-bottom: 0.5px solid var(--border); }
+  .supp-row:last-child { border-bottom: none; }
+  .supp-check { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border2); display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; transition: all 0.15s; }
+  .supp-check.done { background: var(--blue); border-color: var(--blue); }
+  .supp-check svg { display: none; width: 13px; height: 13px; }
+  .supp-check.done svg { display: block; }
+
+  /* CHECK-IN */
+  .ci-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .ci-label { font-size: 13px; color: var(--text2); width: 70px; flex-shrink: 0; }
+  .ci-input { flex: 1; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 9px 12px; font-size: 15px; background: var(--bg); color: var(--text); font-family: inherit; }
+  .ci-unit { font-size: 12px; color: var(--text3); width: 28px; }
+
+  /* RADIO */
+  .radio-row { display: flex; gap: 8px; margin-bottom: 14px; }
+  .radio-opt { flex: 1; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 10px; text-align: center; cursor: pointer; font-size: 13px; color: var(--text); }
+  .radio-opt.sel { border-color: var(--blue); background: var(--blue-light); color: var(--blue-dark); font-weight: 600; }
+
+  /* MODAL */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal-sheet { background: var(--bg); border-radius: 20px 20px 0 0; padding: 24px 20px max(24px, env(safe-area-inset-bottom)); width: 100%; max-width: 480px; }
+  .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; }
+  .field-label { font-size: 13px; color: var(--text2); margin-bottom: 6px; }
+  .field-input { width: 100%; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 11px 12px; font-size: 16px; margin-bottom: 14px; background: var(--bg); color: var(--text); font-family: inherit; }
+
+  /* CHAT */
+  .chat-bubble { border-radius: var(--radius-lg); padding: 13px 15px; margin-bottom: 10px; font-size: 14px; line-height: 1.6; }
+  .chat-bubble.bot { background: var(--blue-light); color: var(--blue-dark); }
+  .chat-bubble.user { background: var(--bg2); text-align: right; color: var(--text); }
+  .chat-input-row { display: flex; gap: 8px; margin-top: 10px; }
+  .chat-input { flex: 1; border: 0.5px solid var(--border2); border-radius: var(--radius); padding: 10px 14px; font-size: 14px; background: var(--bg); color: var(--text); font-family: inherit; }
+  .chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+
+  /* HEADER */
+  .page-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; padding-top: 4px; }
+  .avatar { width: 38px; height: 38px; border-radius: 50%; background: var(--blue-light); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: var(--blue-dark); }
+
+  /* HISTORY TABLE */
+  .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; }
+  .hist-row:last-child { border-bottom: none; }
+
+  /* WEEK SELECTOR */
+  .week-selector { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+  .week-sel-btn { flex-shrink: 0; padding: 7px 14px; border-radius: 20px; border: 0.5px solid var(--border2); background: var(--bg); font-size: 13px; cursor: pointer; color: var(--text); white-space: nowrap; }
+  .week-sel-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); font-weight: 600; }
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pin-screen">
+  <div class="pin-logo">
+    <svg viewBox="0 0 36 36" fill="none" stroke="#185FA5" stroke-width="2">
+      <path d="M4 18h4M28 18h4M8 18h20M6 14l2 4-2 4M30 14l-2 4 2 4"/>
+      <circle cx="18" cy="10" r="3"/>
+    </svg>
+  </div>
+  <div class="pin-title">Ernes Fitness</div>
+  <div class="pin-sub">PIN eingeben um fortzufahren</div>
+  <div class="pin-dots" id="pin-dots">
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+    <div class="pin-dot"></div>
+  </div>
+  <div class="pin-grid">
+    <button class="pin-btn" onclick="pinPress('1')">1</button>
+    <button class="pin-btn" onclick="pinPress('2')">2</button>
+    <button class="pin-btn" onclick="pinPress('3')">3</button>
+    <button class="pin-btn" onclick="pinPress('4')">4</button>
+    <button class="pin-btn" onclick="pinPress('5')">5</button>
+    <button class="pin-btn" onclick="pinPress('6')">6</button>
+    <button class="pin-btn" onclick="pinPress('7')">7</button>
+    <button class="pin-btn" onclick="pinPress('8')">8</button>
+    <button class="pin-btn" onclick="pinPress('9')">9</button>
+    <button class="pin-btn" onclick="pinPress('')" style="font-size:13px;color:var(--text2)"></button>
+    <button class="pin-btn" onclick="pinPress('0')">0</button>
+    <button class="pin-btn" onclick="pinDelete()">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 4H7L2 10l5 6h7a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="M12 8l-4 4M8 8l4 4"/>
+      </svg>
+    </button>
+  </div>
+  <div class="pin-error" id="pin-error"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+
+  <!-- HOME -->
+  <div id="page-home" class="page active">
+    <div class="page-header">
+      <div>
+        <div style="font-size:13px;color:var(--text2)" id="today-label"></div>
+        <div style="font-size:21px;font-weight:700">Guten Morgen, Ernes</div>
+      </div>
+      <div class="avatar">ES</div>
+    </div>
+    <div class="week-grid" id="week-grid"></div>
+    <div class="metric-grid">
+      <div class="metric"><div class="metric-label">Gewicht</div><div class="metric-val" id="m-weight">119.6 <span class="metric-unit">kg</span></div></div>
+      <div class="metric"><div class="metric-label">Ziel</div><div class="metric-val">85 <span class="metric-unit">kg</span></div></div>
+      <div class="metric"><div class="metric-label">Körperfett</div><div class="metric-val" id="m-kf">31.4 <span class="metric-unit">%</span></div></div>
+      <div class="metric"><div class="metric-label">Grundumsatz</div><div class="metric-val">2459 <span class="metric-unit">kcal</span></div></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Fortschritt zum Ziel</div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px">
+        <span id="prog-start">119.6 kg</span><span>85 kg (Ziel)</span>
+      </div>
+      <div class="progress-wrap"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
+      <div style="font-size:12px;color:var(--text2);margin-top:6px" id="prog-label">34.6 kg noch zum Ziel · ~26 Wochen</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Heutiger Workout</div>
+      <div style="margin-bottom:6px" id="today-workout-tag"></div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:14px" id="today-week-label"></div>
+      <button class="btn btn-primary btn-block" onclick="goPage('page-workout')">Workout starten →</button>
+    </div>
+    <div class="card">
+      <div class="section-title">Supplemente heute</div>
+      <div id="home-supps"></div>
+    </div>
+  </div>
+
+  <!-- WORKOUT -->
+  <div id="page-workout" class="page">
+    <div class="page-header">
+      <button class="btn btn-sm" onclick="goPage('page-home')">← Zurück</button>
+      <div id="workout-week-badge"></div>
+    </div>
+    <div class="week-selector" id="week-selector"></div>
+    <div style="background:var(--blue-light);border-radius:var(--radius);padding:12px;margin-bottom:14px;font-size:13px;color:var(--blue-dark);line-height:1.6">
+      Tippe <strong>«Eintragen»</strong> nach jedem Satz. Bei «Geschafft» erhöht das System das Gewicht automatisch fürs nächste Mal.
+    </div>
+    <div id="exercise-list"></div>
+    <button class="btn btn-primary btn-block" style="margin-bottom:16px" onclick="finishWorkout()">Workout abschliessen ✓</button>
+  </div>
+
+  <!-- SUPPLEMENTS -->
+  <div id="page-supps" class="page">
+    <div class="page-header"><div style="font-size:21px;font-weight:700">Supplemente</div></div>
+    <div style="background:var(--bg2);border-radius:var(--radius);padding:12px;margin-bottom:14px;font-size:13px;color:var(--text2);line-height:1.6">
+      Empfehlung basierend auf deinem Blutbild: HDL 34 (↓ niedrig), Triglyceride 186, Ziel Fettabbau. Rücksprache mit Arzt empfohlen.
+    </div>
+    <div class="card"><div class="section-title">Morgens (mit Frühstück)</div><div id="supp-morgen"></div></div>
+    <div class="card"><div class="section-title">Pre-Workout (30 min vorher)</div><div id="supp-pre"></div></div>
+    <div class="card"><div class="section-title">Post-Workout (direkt danach)</div><div id="supp-post"></div></div>
+    <div class="card"><div class="section-title">Abends (vor dem Schlafen)</div><div id="supp-abend"></div></div>
+  </div>
+
+  <!-- CHECK-IN -->
+  <div id="page-checkin" class="page">
+    <div class="page-header"><div style="font-size:21px;font-weight:700">Wöchentlicher Check-in</div></div>
+    <div class="card card-blue" style="margin-bottom:12px">
+      <div style="font-size:13px;color:var(--blue-dark);line-height:1.6">Jeden Montag ausfüllen — dein Plan passt sich automatisch an.</div>
+    </div>
+    <div class="card">
+      <div class="section-title">Körpermaße</div>
+      <div class="ci-row"><div class="ci-label">Gewicht</div><input class="ci-input" type="number" step="0.1" placeholder="119.6" id="ci-weight"><div class="ci-unit">kg</div></div>
+      <div class="ci-row"><div class="ci-label">Bauch</div><input class="ci-input" type="number" step="0.5" placeholder="z.B. 108" id="ci-bauch"><div class="ci-unit">cm</div></div>
+      <div class="ci-row"><div class="ci-label">Brust</div><input class="ci-input" type="number" step="0.5" placeholder="z.B. 118" id="ci-brust"><div class="ci-unit">cm</div></div>
+      <div class="ci-row"><div class="ci-label">Hüfte</div><input class="ci-input" type="number" step="0.5" placeholder="z.B. 115" id="ci-huefte"><div class="ci-unit">cm</div></div>
+      <div class="ci-row"><div class="ci-label">Hals</div><input class="ci-input" type="number" step="0.5" placeholder="z.B. 42" id="ci-hals"><div class="ci-unit">cm</div></div>
+    </div>
+    <div class="card">
+      <div class="section-title">Wie war die letzte Woche?</div>
+      <div class="radio-row" id="ri-feel">
+        <div class="radio-opt" onclick="selOpt(this,'ri-feel')">Schwer</div>
+        <div class="radio-opt sel" onclick="selOpt(this,'ri-feel')">Ok</div>
+        <div class="radio-opt" onclick="selOpt(this,'ri-feel')">Leicht</div>
+      </div>
+      <div class="section-title">Energie & Schlaf</div>
+      <div class="radio-row" id="ri-energy">
+        <div class="radio-opt" onclick="selOpt(this,'ri-energy')">Niedrig</div>
+        <div class="radio-opt sel" onclick="selOpt(this,'ri-energy')">Mittel</div>
+        <div class="radio-opt" onclick="selOpt(this,'ri-energy')">Hoch</div>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-bottom:12px" onclick="saveCheckin()">Check-in speichern ✓</button>
+    <div class="card">
+      <div class="section-title">Verlauf</div>
+      <div id="ci-history" style="font-size:13px;color:var(--text2)">Noch kein Check-in gespeichert.</div>
+    </div>
+  </div>
+
+  <!-- COACH -->
+  <div id="page-coach" class="page">
+    <div class="page-header"><div style="font-size:21px;font-weight:700">KI-Coach</div></div>
+    <div id="chat-messages">
+      <div class="chat-bubble bot">Hey Ernes! Ich kenne dein Profil vollständig — 119.6 kg, 31.4% Körperfett, Ziel: maximaler Fettabbau. Stell mir alles was du willst!</div>
+    </div>
+    <div class="chip-row" id="quick-chips"></div>
+    <div class="chat-input-row">
+      <input class="chat-input" type="text" placeholder="Frag deinen Coach..." id="coach-input" onkeydown="if(event.key==='Enter')sendCoach()">
+      <button class="btn btn-primary" onclick="sendCoach()">↗</button>
+    </div>
+    <div id="coach-loading" style="display:none;padding:10px;font-size:13px;color:var(--text2)">Coach denkt nach...</div>
+  </div>
+
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav" id="bottom-nav" style="display:none">
+  <button class="nav-btn active" onclick="goPage('page-home')" id="nav-home">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 10L10 3l7 7"/><path d="M5 8.5v9h4v-5h2v5h4v-9"/></svg>
+    Home
+  </button>
+  <button class="nav-btn" onclick="goPage('page-workout')" id="nav-workout">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10h2M14 10h2M6 10h8M3 8l1 2-1 2M17 8l-1 2 1 2"/></svg>
+    Workout
+  </button>
+  <button class="nav-btn" onclick="goPage('page-supps')" id="nav-supps">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="10" cy="10" rx="3" ry="7"/><path d="M7 10h6"/></svg>
+    Supps
+  </button>
+  <button class="nav-btn" onclick="goPage('page-checkin')" id="nav-checkin">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="14" height="14" rx="2"/><path d="M7 2v4M13 2v4M3 10h14M7 14l2 2 4-4"/></svg>
+    Check-in
+  </button>
+  <button class="nav-btn" onclick="goPage('page-coach')" id="nav-coach">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H7l-4 3V5a1 1 0 0 1 1-1z"/></svg>
+    Coach
+  </button>
+</nav>
+
+<!-- EXERCISE MODAL -->
+<div class="modal-bg" id="ex-modal">
+  <div class="modal-sheet">
+    <div class="modal-title" id="modal-ex-name">Übung eintragen</div>
+    <div class="radio-row" id="modal-result">
+      <div class="radio-opt sel" onclick="selOpt(this,'modal-result')" data-v="done">Geschafft ✓</div>
+      <div class="radio-opt" onclick="selOpt(this,'modal-result')" data-v="partial">Teilweise</div>
+    </div>
+    <div id="partial-fields" style="display:none">
+      <div class="field-label">Geschafftes Gewicht (kg)</div>
+      <input class="field-input" type="number" step="0.5" id="modal-weight" placeholder="z.B. 50">
+      <div class="field-label">Wiederholungen geschafft</div>
+      <input class="field-input" type="number" id="modal-reps" placeholder="z.B. 8">
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-block" onclick="closeModal()">Abbrechen</button>
+      <button class="btn btn-primary btn-block" onclick="confirmModal()">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// SUPABASE CONFIG — HIER DEINE KEYS EINTRAGEN
+// ============================================================
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const USER_ID = 'ernes_main';
+
+let supabase = null;
+let useSupabase = false;
+
+function initSupabase() {
+  if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      useSupabase = true;
+    } catch(e) { console.log('Supabase not available, using localStorage'); }
+  }
+}
+
+// ============================================================
+// STATE — localStorage als Fallback, Supabase wenn konfiguriert
+// ============================================================
+let ST = {
+  weight: 119.6, kf: 31.4,
+  checkins: [],
+  exProg: {},
+  suppDone: {},
+  coachHistory: [],
+  currentWeek: 1
+};
+
+function loadState() {
+  try {
+    const s = localStorage.getItem('ernes_fit_v3');
+    if (s) ST = { ...ST, ...JSON.parse(s) };
+  } catch(e) {}
+}
+
+function saveState() {
+  try { localStorage.setItem('ernes_fit_v3', JSON.stringify(ST)); } catch(e) {}
+  if (useSupabase) syncToSupabase();
+}
+
+async function syncToSupabase() {
+  if (!supabase) return;
+  try {
+    await supabase.from('app_state').upsert({
+      user_id: USER_ID,
+      state_json: JSON.stringify(ST),
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+  } catch(e) {}
+}
+
+async function loadFromSupabase() {
+  if (!supabase) return;
+  try {
+    const { data } = await supabase
+      .from('app_state')
+      .select('state_json')
+      .eq('user_id', USER_ID)
+      .single();
+    if (data?.state_json) {
+      ST = { ...ST, ...JSON.parse(data.state_json) };
+    }
+  } catch(e) {}
+}
+
+// ============================================================
+// PIN
+// ============================================================
+const CORRECT_PIN = '1111';
+let pinCurrent = '';
+
+function pinPress(n) {
+  if (pinCurrent.length >= 4 || n === '') return;
+  pinCurrent += n;
+  updatePinDots();
+  if (pinCurrent.length === 4) {
+    setTimeout(() => {
+      if (pinCurrent === CORRECT_PIN) {
+        document.getElementById('pin-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('bottom-nav').style.display = 'flex';
+        initApp();
+      } else {
+        document.querySelectorAll('.pin-dot').forEach(d => d.classList.add('error'));
+        document.getElementById('pin-error').textContent = 'Falscher PIN — versuche nochmal';
+        setTimeout(() => {
+          pinCurrent = '';
+          updatePinDots();
+          document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
+          document.getElementById('pin-error').textContent = '';
+        }, 1000);
+      }
+    }, 100);
+  }
+}
+
+function pinDelete() {
+  pinCurrent = pinCurrent.slice(0, -1);
+  updatePinDots();
+}
+
+function updatePinDots() {
+  document.querySelectorAll('.pin-dot').forEach((d, i) => {
+    d.classList.toggle('filled', i < pinCurrent.length);
+  });
+}
+
+// ============================================================
+// EXERCISE DATABASE — 3 WOCHEN ROTATION
+// ============================================================
+const EXERCISE_INFO = {
+  'Chest Press Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Barbell_Bench_Press_-_Medium_Grip/0.jpg', muscle: 'Brust', tip: 'Rücken an die Polsterung anlehnen. Griffe auf Schulterbreite. 3 Sek absenken, 1 Sek drücken. Ellbogen nicht überstrecken.' },
+  'Incline Chest Press': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Barbell_Incline_Bench_Press_-_Medium_Grip/0.jpg', muscle: 'Obere Brust', tip: 'Schräge Bank 30–45°. Fokus auf den oberen Brustmuskel. Gleiche Technik wie flache Bank.' },
+  'Kabelzug Flyes': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Cable_Cross-Over/0.jpg', muscle: 'Brust innen', tip: 'Arme leicht gebeugt, Hände treffen sich vor dem Körper. Bewegung aus dem Brustmuskel führen — nicht die Schultern.' },
+  'Dumbbell Flyes': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Flyes/0.jpg', muscle: 'Brust Stretch', tip: 'Bank flach. Arme weit öffnen bis zum Dehnen. Keine zu schweren Gewichte — Verletzungsgefahr.' },
+  'Pec Deck Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Pec_Deck_Fly/0.jpg', muscle: 'Brust Squeeze', tip: 'Ellbogen auf Schulterhöhe. Vorne 2 Sek halten und Brust maximal anspannen.' },
+  'Shoulder Press Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Barbell_Shoulder_Press/0.jpg', muscle: 'Schultern', tip: 'Sitz aufrecht. Arme nicht vollständig strecken oben — Spannung halten. Langsam absenken.' },
+  'Kurzhantel Schulterdrücken': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Shoulder_Press/0.jpg', muscle: 'Schultern', tip: 'Sitzend auf Bank. Kurzhanteln auf Ohrhöhe starten. Beide Seiten gleichmässig.' },
+  'Seitheben Kabel': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Side_Lateral_Raise/0.jpg', muscle: 'Seitliche Schulter', tip: 'Arme leicht gebeugt. Nur bis Schulterhöhe heben — nicht höher. Langsam absenken für maximalen Effekt.' },
+  'Seitheben Kurzhantel': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Lateral_Raise/0.jpg', muscle: 'Seitliche Schulter', tip: 'Kleines Gewicht, hohe Reps. Langsam und kontrolliert — kein Schwung.' },
+  'Triceps Pushdown V-Bar': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Triceps_Pushdown/0.jpg', muscle: 'Trizeps', tip: 'Ellbogen fest am Körper. Volle Streckung unten — kurz halten.' },
+  'Triceps Overhead Kabel': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Cable_Overhead_Triceps_Extension/0.jpg', muscle: 'Trizeps lang', tip: 'Seil hinter dem Kopf. Ellbogen oben fixiert. Guter Stretch für den langen Trizepskopf.' },
+  'Triceps Dips Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Tricep_Dumbbell_Kickback/0.jpg', muscle: 'Trizeps', tip: 'Kontrollierte Bewegung. Nicht mit Schwung. Beim Weg zurück langsam und gebremst.' },
+  'Leg Press Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Leg_Press/0.jpg', muscle: 'Quadrizeps / Gesäss', tip: 'Füsse hüftbreit, Mitte der Platte. Knie nicht über die Zehen. Rücken flach. Nicht ganz strecken oben.' },
+  'Hack Squat Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Hack_Squat/0.jpg', muscle: 'Quadrizeps', tip: 'Schultern unter die Polster. Tief in die Knie — mindestens 90°. Grosser Quadrizeps-Fokus.' },
+  'Goblet Squat': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Squat/0.jpg', muscle: 'Beine gesamt', tip: 'Kurzhantel vor der Brust halten. Tief squatten, Rücken gerade. Fersen am Boden.' },
+  'Leg Curl liegend': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Lying_Leg_Curls/0.jpg', muscle: 'Hamstrings', tip: 'Hüfte bleibt auf der Polsterung. Langsam absenken (3 Sek). Volle Range of Motion.' },
+  'Leg Curl sitzend': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Seated_Leg_Curl/0.jpg', muscle: 'Hamstrings', tip: 'Sitzendes Gerät gibt anderen Winkel als liegendes. Variiere beide Versionen für beste Ergebnisse.' },
+  'Romanian Deadlift KH': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Romanian_Deadlift/0.jpg', muscle: 'Hamstrings / Po', tip: 'Rücken gerade, Hüfte geht zurück. Kurzhanteln nah am Körper. Bis Dehnung spüren, dann hoch.' },
+  'Leg Extension': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Leg_Extensions/0.jpg', muscle: 'Quadrizeps Isolation', tip: 'Oben kurz halten (1 Sek), dann kontrolliert absenken. Oberschenkel nicht abheben.' },
+  'Wadenheben Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Calf_Raises/0.jpg', muscle: 'Waden', tip: 'Volle Bewegung — ganz unten strecken, ganz oben drücken. Langsam für maximalen Effekt.' },
+  'Laufband': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Jogging%2C_Treadmill/0.jpg', muscle: 'Cardio / Fettverbrennung', tip: '30 Min bei 65–70% maximale HF. Ziel-HF für Ernes: ca. 128–135 BPM. Fettverbrennungszone.' },
+  'Crosstrainer': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Elliptical_Trainer/0.jpg', muscle: 'Cardio / Ganzkörper', tip: 'Gelenksschonender als Laufband. Arme aktiv mitbewegen für mehr Kalorienverbrauch.' },
+  'Stairmaster': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stairmaster/0.jpg', muscle: 'Cardio / Beine / Po', tip: 'Sehr effektiv für Fettabbau und Po-Training gleichzeitig. Körper aufrecht halten, nicht aufstützen.' },
+  'Lat Pulldown weit': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Wide-Grip_Lat_Pulldown/0.jpg', muscle: 'Rücken Breite', tip: 'Weiter Griff. Stange zur Brust — Schulterblätter zusammenführen. Langsam zurück.' },
+  'Lat Pulldown eng': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Close-Grip_Front_Lat_Pulldown/0.jpg', muscle: 'Rücken Tiefe', tip: 'Enger Parallelgriff. Etwas mehr Bizeps beteiligt. Ellbogen weit nach unten-hinten.' },
+  'Seated Cable Row': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Seated_Cable_Rows/0.jpg', muscle: 'Rücken Mitte', tip: 'Griff zum Bauchnabel. 2 Sek halten. Kein Schwung — Rücken immer gerade.' },
+  'T-Bar Row': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/T-Bar_Row_with_Handle/0.jpg', muscle: 'Rücken Masse', tip: 'Oberkörper ca. 45° vorgebeugt. Gewicht zur Brust ziehen. Sehr effektiv für Rückenmasse.' },
+  'Face Pull': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Face_Pull/0.jpg', muscle: 'Hintere Schulter / Gesundheit', tip: 'Seil zu den Ohren / Augen ziehen. Ellbogen HOCH halten. Wichtig für Schultergesundheit.' },
+  'Bizeps Curl Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Concentration_Curls/0.jpg', muscle: 'Bizeps', tip: 'Maschine fixiert den Ellbogen. Volle Bewegung. Langsam absenken.' },
+  'Bizeps Curl KH alternierend': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Dumbbell_Alternate_Bicep_Curl/0.jpg', muscle: 'Bizeps', tip: 'Kein Schwung. Ellbogen fixiert. Volle Streckung unten, drehen am Ende (Supination).' },
+  'Hammer Curl': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Hammer_Curls/0.jpg', muscle: 'Bizeps / Unterarm', tip: 'Neutraler Griff (Daumen oben). Auch Unterarme und Brachialis werden trainiert.' },
+  'Plank': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Plank/0.jpg', muscle: 'Core Stabilität', tip: 'Körper gerade wie ein Brett. Gesäss nicht heben oder senken. Bauch fest anspannen. Atmen nicht vergessen.' },
+  'Crunch Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Machine_Crunch/0.jpg', muscle: 'Bauch', tip: 'Langsam absenken (3 Sek). Nicht mit Schwung. Bauchmuskeln aktiv — nicht Hüftbeuger.' },
+  'Leg Raise': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Flat_Bench_Leg_Pull-In/0.jpg', muscle: 'Unterbauch', tip: 'Rücken flach. Beine langsam absenken ohne Boden zu berühren. Unterbauch spüren.' },
+  'Cable Crunch': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Cable_Crunch/0.jpg', muscle: 'Bauch mit Gewicht', tip: 'Kniend am Kabel. Gewicht mit dem Bauch nach unten ziehen — nicht die Arme. Guter Widerstand für Bauchaufbau.' },
+  'Russian Twist': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Russian_Twist/0.jpg', muscle: 'Seitliche Bauchmuskeln', tip: 'Oberkörper leicht zurück. Schultern drehen, nicht nur die Arme. Mit Gewicht für mehr Intensität.' },
+  'Hanging Leg Raise': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Hanging_Leg_Raise/0.jpg', muscle: 'Core / Hüftbeuger', tip: 'Langsam und kontrolliert. Beine gerade oder angewinkelt. Schwingen vermeiden.' }
+};
+
+// 3-WOCHEN ROTATION
+const ROTATION = {
+  1: { // WOCHE 1 — Maschinen
+    label: 'Woche 1 — Maschinen',
+    days: {
+      0: { label: 'Montag — Push + Core', tag: 'Push', exercises: [
+        {name:'Chest Press Maschine', sets:4, reps:10, weight:60},
+        {name:'Shoulder Press Maschine', sets:3, reps:12, weight:30},
+        {name:'Pec Deck Maschine', sets:3, reps:12, weight:40},
+        {name:'Triceps Pushdown V-Bar', sets:3, reps:15, weight:20},
+        {name:'Crunch Maschine', sets:3, reps:15, weight:20},
+        {name:'Plank', sets:3, reps:1, weight:0, isTime:true},
+        {name:'Leg Raise', sets:3, reps:12, weight:0}
+      ]},
+      1: { label: 'Dienstag — Beine + Cardio', tag: 'Beine', exercises: [
+        {name:'Leg Press Maschine', sets:4, reps:12, weight:120},
+        {name:'Leg Curl liegend', sets:3, reps:12, weight:40},
+        {name:'Leg Extension', sets:3, reps:15, weight:50},
+        {name:'Wadenheben Maschine', sets:3, reps:20, weight:60},
+        {name:'Laufband', sets:1, reps:1, weight:0, isCardio:true}
+      ]},
+      3: { label: 'Donnerstag — Pull + Core', tag: 'Pull', exercises: [
+        {name:'Lat Pulldown weit', sets:4, reps:10, weight:55},
+        {name:'Seated Cable Row', sets:3, reps:12, weight:60},
+        {name:'Face Pull', sets:3, reps:15, weight:15},
+        {name:'Bizeps Curl Maschine', sets:3, reps:12, weight:25},
+        {name:'Cable Crunch', sets:3, reps:15, weight:25},
+        {name:'Leg Raise', sets:3, reps:12, weight:0}
+      ]},
+      6: { label: 'Sonntag — Ganzkörper + Cardio', tag: 'Ganzkörper', exercises: [
+        {name:'Leg Press Maschine', sets:3, reps:15, weight:100},
+        {name:'Chest Press Maschine', sets:3, reps:15, weight:50},
+        {name:'Lat Pulldown weit', sets:3, reps:15, weight:45},
+        {name:'Plank', sets:3, reps:1, weight:0, isTime:true},
+        {name:'Crosstrainer', sets:1, reps:1, weight:0, isCardio:true, duration:'40 Min'}
+      ]}
+    }
+  },
+  2: { // WOCHE 2 — Kabel + freie Gewichte
+    label: 'Woche 2 — Kabel & Kurzhanteln',
+    days: {
+      0: { label: 'Montag — Push + Core', tag: 'Push', exercises: [
+        {name:'Incline Chest Press', sets:4, reps:10, weight:24},
+        {name:'Kurzhantel Schulterdrücken', sets:3, reps:12, weight:16},
+        {name:'Kabelzug Flyes', sets:3, reps:12, weight:12},
+        {name:'Triceps Overhead Kabel', sets:3, reps:15, weight:15},
+        {name:'Cable Crunch', sets:3, reps:15, weight:25},
+        {name:'Russian Twist', sets:3, reps:20, weight:8},
+        {name:'Plank', sets:3, reps:1, weight:0, isTime:true}
+      ]},
+      1: { label: 'Dienstag — Beine + Cardio', tag: 'Beine', exercises: [
+        {name:'Hack Squat Maschine', sets:4, reps:12, weight:80},
+        {name:'Romanian Deadlift KH', sets:3, reps:12, weight:20},
+        {name:'Leg Curl sitzend', sets:3, reps:12, weight:35},
+        {name:'Wadenheben Maschine', sets:3, reps:20, weight:60},
+        {name:'Stairmaster', sets:1, reps:1, weight:0, isCardio:true, duration:'25 Min'}
+      ]},
+      3: { label: 'Donnerstag — Pull + Core', tag: 'Pull', exercises: [
+        {name:'Lat Pulldown eng', sets:4, reps:10, weight:50},
+        {name:'T-Bar Row', sets:3, reps:10, weight:40},
+        {name:'Seitheben Kabel', sets:3, reps:15, weight:8},
+        {name:'Bizeps Curl KH alternierend', sets:3, reps:12, weight:14},
+        {name:'Hanging Leg Raise', sets:3, reps:10, weight:0},
+        {name:'Russian Twist', sets:3, reps:20, weight:8}
+      ]},
+      6: { label: 'Sonntag — Ganzkörper + Cardio', tag: 'Ganzkörper', exercises: [
+        {name:'Goblet Squat', sets:3, reps:15, weight:20},
+        {name:'Dumbbell Flyes', sets:3, reps:15, weight:16},
+        {name:'Seated Cable Row', sets:3, reps:15, weight:50},
+        {name:'Plank', sets:3, reps:1, weight:0, isTime:true},
+        {name:'Laufband', sets:1, reps:1, weight:0, isCardio:true, duration:'40 Min'}
+      ]}
+    }
+  },
+  3: { // WOCHE 3 — Supersätze
+    label: 'Woche 3 — Supersätze (2 Übungen hintereinander)',
+    days: {
+      0: { label: 'Montag — Push Superset + Core', tag: 'Push SS', exercises: [
+        {name:'Chest Press Maschine', sets:3, reps:12, weight:55, superset:'mit Pec Deck'},
+        {name:'Pec Deck Maschine', sets:3, reps:12, weight:35, superset:'mit Chest Press'},
+        {name:'Kurzhantel Schulterdrücken', sets:3, reps:12, weight:16, superset:'mit Seitheben'},
+        {name:'Seitheben Kurzhantel', sets:3, reps:15, weight:8, superset:'mit Schulterdrücken'},
+        {name:'Triceps Dips Maschine', sets:3, reps:12, weight:40},
+        {name:'Cable Crunch', sets:3, reps:15, weight:25},
+        {name:'Plank', sets:3, reps:1, weight:0, isTime:true}
+      ]},
+      1: { label: 'Dienstag — Beine Superset + Cardio', tag: 'Beine SS', exercises: [
+        {name:'Leg Press Maschine', sets:3, reps:15, weight:110, superset:'mit Leg Extension'},
+        {name:'Leg Extension', sets:3, reps:15, weight:45, superset:'mit Leg Press'},
+        {name:'Leg Curl liegend', sets:3, reps:12, weight:38, superset:'mit Wadenheben'},
+        {name:'Wadenheben Maschine', sets:3, reps:20, weight:60, superset:'mit Leg Curl'},
+        {name:'Crosstrainer', sets:1, reps:1, weight:0, isCardio:true, duration:'30 Min'}
+      ]},
+      3: { label: 'Donnerstag — Pull Superset + Core', tag: 'Pull SS', exercises: [
+        {name:'Lat Pulldown weit', sets:3, reps:12, weight:52, superset:'mit Seated Row'},
+        {name:'Seated Cable Row', sets:3, reps:12, weight:55, superset:'mit Lat Pulldown'},
+        {name:'Face Pull', sets:3, reps:15, weight:15},
+        {name:'Hammer Curl', sets:3, reps:12, weight:14, superset:'mit Bizeps Curl'},
+        {name:'Bizeps Curl KH alternierend', sets:3, reps:10, weight:14, superset:'mit Hammer Curl'},
+        {name:'Hanging Leg Raise', sets:3, reps:10, weight:0},
+        {name:'Russian Twist', sets:3, reps:20, weight:10}
+      ]},
+      6: { label: 'Sonntag — Ganzkörper Superset + Cardio', tag: 'GK SS', exercises: [
+        {name:'Hack Squat Maschine', sets:3, reps:15, weight:75, superset:'mit Romanian Deadlift'},
+        {name:'Romanian Deadlift KH', sets:3, reps:12, weight:20, superset:'mit Hack Squat'},
+        {name:'Incline Chest Press', sets:3, reps:15, weight:20, superset:'mit Lat Pulldown'},
+        {name:'Lat Pulldown eng', sets:3, reps:15, weight:44, superset:'mit Chest Press'},
+        {name:'Plank', sets:3, reps:1, weight:0, isTime:true},
+        {name:'Laufband', sets:1, reps:1, weight:0, isCardio:true, duration:'40 Min'}
+      ]}
+    }
+  }
+};
+
+const SUPPLEMENTS = {
+  morgen: [
+    {name:'Vitamin D3 — 2000 IE', why:'HDL erhöhen (aktuell 34, Ziel >55) · Immunsystem stärken'},
+    {name:'Omega-3 — 2g (Fischöl)', why:'Triglyceride senken (aktuell 186) · Herzgesundheit · Entzündungen reduzieren'}
+  ],
+  pre: [
+    {name:'Kreatin Monohydrat — 5g', why:'Mehr Kraft und Ausdauer · Muskelmasse beim Defizit erhalten'}
+  ],
+  post: [
+    {name:'Whey Protein — 30g (in Wasser)', why:'Muskelschutz beim Kaloriendefizit · Schnelle Aminosäuren · Sättigung'}
+  ],
+  abend: [
+    {name:'Magnesium Glycinat — 300mg', why:'Besserer Schlaf · Muskelregeneration · Stressabbau'}
+  ]
+};
+
+const QUICK_QUESTIONS = [
+  'Bin ich im Zeitplan für 85 kg?',
+  'Welche Übung ist heute für den Bauch?',
+  'Wie viel Protein brauche ich täglich?',
+  'Wann genau nehme ich Kreatin?',
+  'Was hilft mir HDL zu erhöhen?'
+];
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function goPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const map = {'page-home':'nav-home','page-workout':'nav-workout','page-supps':'nav-supps','page-checkin':'nav-checkin','page-coach':'nav-coach'};
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById(map[id]);
+  if (nb) nb.classList.add('active');
+  if (id === 'page-workout') buildExercises();
+}
+
+function selOpt(el, gid) {
+  document.querySelectorAll('#' + gid + ' .radio-opt').forEach(o => o.classList.remove('sel'));
+  el.classList.add('sel');
+  if (gid === 'modal-result') {
+    document.getElementById('partial-fields').style.display = el.dataset.v === 'partial' ? 'block' : 'none';
+  }
+}
+
+// ============================================================
+// HOME PAGE
+// ============================================================
+function buildHome() {
+  const now = new Date();
+  document.getElementById('today-label').textContent = now.toLocaleDateString('de-AT', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  // Week grid
+  const days = ['Mo','Di','Mi','Do','Fr','Sa','So'];
+  const trainDays = [0,1,3,6];
+  const todayJS = now.getDay();
+  const todayAdj = todayJS === 0 ? 6 : todayJS - 1;
+  const g = document.getElementById('week-grid'); g.innerHTML = '';
+  days.forEach((d,i) => {
+    const div = document.createElement('div');
+    div.className = 'day-pill' + (trainDays.includes(i) ? ' train' : '') + (i === todayAdj ? ' today' : '');
+    div.innerHTML = `<span class="day-name">${d}</span><div class="day-dot"></div>`;
+    g.appendChild(div);
+  });
+
+  // Today's workout
+  const week = ST.currentWeek || 1;
+  const weekData = ROTATION[week];
+  const todayWorkout = weekData?.days[todayAdj];
+  const tag = document.getElementById('today-workout-tag');
+  const weekLbl = document.getElementById('today-week-label');
+  if (todayWorkout) {
+    tag.innerHTML = `<span class="tag tag-blue">${todayWorkout.label}</span>`;
+    weekLbl.textContent = weekData.label + ' · 75–90 Min · Technogym';
+  } else {
+    tag.innerHTML = '<span class="tag tag-green">Ruhetag — Erholung ist auch Training</span>';
+    weekLbl.textContent = weekData?.label || '';
+  }
+
+  // Progress
+  const startW = 119.6;
+  const goalW = 85;
+  const currW = ST.weight || startW;
+  const pct = Math.max(0, Math.min(100, ((startW - currW) / (startW - goalW)) * 100));
+  document.getElementById('prog-bar').style.width = pct.toFixed(1) + '%';
+  document.getElementById('prog-start').textContent = currW + ' kg';
+  const remaining = (currW - goalW).toFixed(1);
+  const weeks = Math.round(remaining / 1.3);
+  document.getElementById('prog-label').textContent = `${remaining} kg noch zum Ziel · ~${weeks} Wochen`;
+  document.getElementById('m-weight').innerHTML = currW + ' <span class="metric-unit">kg</span>';
+  document.getElementById('m-kf').innerHTML = (ST.kf || 31.4) + ' <span class="metric-unit">%</span>';
+
+  buildHomeSupps();
+}
+
+function buildHomeSupps() {
+  const c = document.getElementById('home-supps'); if (!c) return;
+  const all = [
+    ...SUPPLEMENTS.morgen.map(s=>({...s,t:'Morgens'})),
+    ...SUPPLEMENTS.pre.map(s=>({...s,t:'Pre-Workout'})),
+    ...SUPPLEMENTS.post.map(s=>({...s,t:'Post-Workout'})),
+    ...SUPPLEMENTS.abend.map(s=>({...s,t:'Abends'}))
+  ];
+  c.innerHTML = '';
+  all.forEach((s,i) => {
+    const key='hs'+i; const done=ST.suppDone[key];
+    const row = document.createElement('div'); row.className='supp-row';
+    row.innerHTML=`<div class="supp-check ${done?'done':''}" onclick="toggleSupp('${key}',this)"><svg viewBox="0 0 13 13" fill="none" stroke="white" stroke-width="2"><path d="M2 6.5l3.5 3.5 5-6"/></svg></div><div style="flex:1"><div style="font-size:14px;color:var(--text)">${s.name}</div><div style="font-size:11px;color:var(--text2)">${s.t}</div></div>`;
+    c.appendChild(row);
+  });
+}
+
+// ============================================================
+// WORKOUT
+// ============================================================
+function buildWeekSelector() {
+  const sel = document.getElementById('week-selector'); if (!sel) return;
+  sel.innerHTML = '';
+  [1,2,3].forEach(w => {
+    const btn = document.createElement('button');
+    btn.className = 'week-sel-btn' + (ST.currentWeek === w ? ' active' : '');
+    btn.textContent = `Woche ${w}`;
+    btn.onclick = () => {
+      ST.currentWeek = w; saveState();
+      document.querySelectorAll('.week-sel-btn').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('workout-week-badge').innerHTML = `<span class="tag tag-amber">${ROTATION[w].label}</span>`;
+      buildExercises();
+    };
+    sel.appendChild(btn);
+  });
+  const w = ST.currentWeek || 1;
+  document.getElementById('workout-week-badge').innerHTML = `<span class="tag tag-amber">${ROTATION[w].label}</span>`;
+}
+
+function buildExercises() {
+  const list = document.getElementById('exercise-list'); if (!list) return;
+  const now = new Date();
+  const todayJS = now.getDay();
+  const todayAdj = todayJS === 0 ? 6 : todayJS - 1;
+  const week = ST.currentWeek || 1;
+  const weekData = ROTATION[week];
+  const dayData = weekData?.days[todayAdj] || weekData?.days[0];
+  list.innerHTML = '';
+
+  if (!dayData) return;
+
+  dayData.exercises.forEach(ex => {
+    const info = EXERCISE_INFO[ex.name] || {};
+    const prog = ST.exProg[ex.name] || {weight: ex.weight, reps: ex.reps, done: false};
+    const card = document.createElement('div');
+    card.className = 'ex-card';
+
+    let weightLabel = prog.weight > 0 ? prog.weight + ' kg' : 'Körpergewicht';
+    let repsLabel = ex.isTime ? '45 Sek' : ex.isCardio ? (ex.duration || '30 Min') : prog.reps + ' Wdh';
+    let supersetBadge = ex.superset ? `<span class="tag tag-amber" style="font-size:10px;margin-left:6px">SS ${ex.superset}</span>` : '';
+
+    card.innerHTML = `
+      <div class="ex-img-wrap">
+        <img class="ex-img" src="${info.img || ''}" alt="${ex.name}"
+          onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"
+          onload="this.nextElementSibling.style.display='none'">
+        <div class="ex-img-placeholder" style="display:none">
+          <svg width="48" height="48" viewBox="0 0 20 20" fill="none" stroke="var(--text3)" stroke-width="1.2">
+            <path d="M4 10h2M14 10h2M6 10h8M3 8l1 2-1 2M17 8l-1 2 1 2"/>
+          </svg>
+        </div>
+        <div class="week-badge">W${week}</div>
+      </div>
+      <div class="ex-body">
+        <div class="ex-header">
+          <div>
+            <div class="ex-name">${ex.name}${supersetBadge}</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:2px">${info.muscle || ''}</div>
+          </div>
+          ${prog.done ? '<span class="tag tag-green">✓ Erledigt</span>' : ''}
+        </div>
+        <div class="ex-chips">
+          <div class="ex-chip">${ex.sets} Sätze</div>
+          <div class="ex-chip">${repsLabel}</div>
+          ${!ex.isCardio ? `<div class="ex-chip">${weightLabel}</div>` : ''}
+        </div>
+        <div class="ex-tip">${info.tip || ''}</div>
+        <div class="ex-actions">
+          ${prog.done
+            ? `<button class="btn btn-success btn-sm" style="flex:1">✓ Geschafft · nächstes Mal ${prog.weight > 0 ? Math.round(prog.weight * 1.05 * 2)/2 + ' kg' : 'weiter so'}</button>`
+            : `<button class="btn btn-sm" style="flex:1" onclick="openModal('${ex.name}',${prog.weight},${prog.reps})">Eintragen</button>
+               <button class="btn btn-sm" onclick="quickDone('${ex.name}',${prog.weight},${prog.reps})">Schnell ✓</button>`
+          }
+        </div>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+function quickDone(name, w, r) {
+  const nw = w > 0 ? Math.round(w * 1.05 * 2) / 2 : 0;
+  ST.exProg[name] = {weight: nw || w, reps: r, done: true};
+  saveState(); buildExercises();
+}
+
+function finishWorkout() {
+  const today = new Date().toLocaleDateString('de-AT');
+  if (!ST.workoutLog) ST.workoutLog = [];
+  ST.workoutLog.unshift({date: today, week: ST.currentWeek});
+  Object.keys(ST.exProg).forEach(k => { if(ST.exProg[k]) ST.exProg[k].done = false; });
+  saveState();
+  alert('Super Ernes! Workout abgeschlossen 💪\nGewichte wurden für nächstes Mal angepasst.');
+  goPage('page-home');
+}
+
+// ============================================================
+// SUPPLEMENTS
+// ============================================================
+function buildSupplements() {
+  function render(arr, cid) {
+    const c = document.getElementById(cid); if (!c) return; c.innerHTML = '';
+    arr.forEach((s, i) => {
+      const key = cid + i; const done = ST.suppDone[key];
+      const row = document.createElement('div'); row.className = 'supp-row';
+      row.innerHTML = `<div class="supp-check ${done?'done':''}" onclick="toggleSupp('${key}',this)"><svg viewBox="0 0 13 13" fill="none" stroke="white" stroke-width="2"><path d="M2 6.5l3.5 3.5 5-6"/></svg></div><div style="flex:1"><div style="font-size:14px;font-weight:600;color:var(--text)">${s.name}</div><div style="font-size:12px;color:var(--text2);margin-top:2px;line-height:1.5">${s.why}</div></div>`;
+      c.appendChild(row);
+    });
+  }
+  render(SUPPLEMENTS.morgen, 'supp-morgen');
+  render(SUPPLEMENTS.pre, 'supp-pre');
+  render(SUPPLEMENTS.post, 'supp-post');
+  render(SUPPLEMENTS.abend, 'supp-abend');
+}
+
+function toggleSupp(key, el) {
+  ST.suppDone[key] = !ST.suppDone[key];
+  el.classList.toggle('done', ST.suppDone[key]);
+  saveState();
+}
+
+// ============================================================
+// CHECK-IN
+// ============================================================
+function saveCheckin() {
+  const w = parseFloat(document.getElementById('ci-weight').value) || ST.weight;
+  const entry = {
+    date: new Date().toLocaleDateString('de-AT'),
+    weight: w,
+    bauch: document.getElementById('ci-bauch').value,
+    brust: document.getElementById('ci-brust').value,
+    huefte: document.getElementById('ci-huefte').value,
+    hals: document.getElementById('ci-hals').value,
+    feeling: document.querySelector('#ri-feel .sel')?.textContent || 'Ok',
+    energy: document.querySelector('#ri-energy .sel')?.textContent || 'Mittel'
+  };
+
+  if (w > 0 && w < 200) {
+    const delta = (ST.weight - w).toFixed(1);
+    const newKF = Math.max(10, ST.kf - (delta * 0.4)).toFixed(1);
+    ST.weight = w; ST.kf = parseFloat(newKF);
+  }
+
+  if (!ST.checkins) ST.checkins = [];
+  ST.checkins.unshift(entry);
+  saveState();
+
+  if (useSupabase && supabase) {
+    supabase.from('checkins').insert({
+      user_id: USER_ID, date: new Date().toISOString(),
+      weight: entry.weight, bauch: parseFloat(entry.bauch)||null,
+      brust: parseFloat(entry.brust)||null, huefte: parseFloat(entry.huefte)||null,
+      feeling: entry.feeling, energy: entry.energy
+    }).then(() => {}).catch(() => {});
+  }
+
+  renderCheckinHistory();
+  buildHome();
+  alert('Check-in gespeichert! Plan wird angepasst.');
+}
+
+function renderCheckinHistory() {
+  const hist = document.getElementById('ci-history');
+  if (!ST.checkins || ST.checkins.length === 0) {
+    hist.textContent = 'Noch kein Check-in gespeichert.'; return;
+  }
+  hist.innerHTML = ST.checkins.slice(0, 10).map(c => `
+    <div class="hist-row">
+      <span style="color:var(--text2)">${c.date}</span>
+      <span style="font-weight:600">${c.weight} kg</span>
+      ${c.bauch ? `<span style="font-size:12px;color:var(--text2)">Bauch ${c.bauch}cm</span>` : ''}
+      <span class="tag ${c.feeling==='Leicht'?'tag-green':c.feeling==='Schwer'?'tag-red':'tag-blue'}" style="font-size:10px">${c.feeling||''}</span>
+    </div>`).join('');
+}
+
+// ============================================================
+// MODAL
+// ============================================================
+let _mEx = '', _mW = 0, _mR = 0;
+
+function openModal(name, w, r) {
+  _mEx = name; _mW = w; _mR = r;
+  document.getElementById('modal-ex-name').textContent = name;
+  document.getElementById('modal-weight').value = w > 0 ? w : '';
+  document.getElementById('modal-reps').value = r;
+  const opts = document.querySelectorAll('#modal-result .radio-opt');
+  opts[0].classList.add('sel'); opts[1].classList.remove('sel');
+  document.getElementById('partial-fields').style.display = 'none';
+  document.getElementById('ex-modal').classList.add('open');
+}
+
+function closeModal() { document.getElementById('ex-modal').classList.remove('open'); }
+
+function confirmModal() {
+  const done = document.querySelector('#modal-result .radio-opt.sel')?.dataset.v === 'done';
+  if (done) {
+    const nw = _mW > 0 ? Math.round(_mW * 1.05 * 2) / 2 : 0;
+    ST.exProg[_mEx] = {weight: nw || _mW, reps: _mR, done: true};
+  } else {
+    const w = parseFloat(document.getElementById('modal-weight').value) || _mW;
+    const r = parseInt(document.getElementById('modal-reps').value) || _mR;
+    ST.exProg[_mEx] = {weight: w, reps: r, done: true};
+  }
+  saveState(); closeModal(); buildExercises();
+}
+
+// ============================================================
+// COACH
+// ============================================================
+function buildQuickChips() {
+  const row = document.getElementById('quick-chips');
+  QUICK_QUESTIONS.forEach(q => {
+    const btn = document.createElement('button'); btn.className='btn btn-sm';
+    btn.textContent = q;
+    btn.onclick = () => { document.getElementById('coach-input').value = q; sendCoach(); };
+    row.appendChild(btn);
+  });
+}
+
+async function sendCoach() {
+  const inp = document.getElementById('coach-input');
+  const q = inp.value.trim(); if (!q) return; inp.value = '';
+
+  const msgs = document.getElementById('chat-messages');
+  const ub = document.createElement('div'); ub.className='chat-bubble user'; ub.textContent=q;
+  msgs.appendChild(ub);
+  document.getElementById('coach-loading').style.display='block';
+
+  if (!ST.coachHistory) ST.coachHistory = [];
+  ST.coachHistory.push({role:'user', content:q});
+
+  const sys = `Du bist der persönliche Fitness-Coach von Ernes Sivrikaya. Sein aktuelles Profil:
+- Alter: 27 Jahre, männlich, Größe: 186 cm
+- Aktuelles Gewicht: ${ST.weight} kg, Körperfett: ${ST.kf}%
+- Ziel: 85 kg — maximaler Fettabbau in kürzester Zeit
+- Training: Montag, Dienstag, Donnerstag, Sonntag — 75-90 Min — Kraft + Cardio — Technogym Geräte
+- 3-Wochen Rotation: Woche 1 Maschinen, Woche 2 Kabel/KH, Woche 3 Supersätze — aktuell Woche ${ST.currentWeek}
+- Fokus Körperstelle: Core / Bauch
+- Blutbild: HDL 34 (niedrig, Norm >55), Triglyceride 186 (knapp unter Grenze), CH/HDL 5.5 (erhöht)
+- Supplemente: Vitamin D3, Omega-3, Kreatin, Whey Protein, Magnesium
+- Bisherige Check-ins: ${ST.checkins?.length || 0}
+Antworte kurz, motivierend, konkret auf Deutsch. Maximal 4–5 Sätze.`;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system: sys,
+        messages: ST.coachHistory.slice(-8)
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.find(b=>b.type==='text')?.text || 'Fehler beim Abrufen.';
+    ST.coachHistory.push({role:'assistant', content:text});
+    if (ST.coachHistory.length > 20) ST.coachHistory = ST.coachHistory.slice(-20);
+    saveState();
+    document.getElementById('coach-loading').style.display='none';
+    const ab = document.createElement('div'); ab.className='chat-bubble bot'; ab.textContent=text;
+    msgs.appendChild(ab); msgs.scrollTop=msgs.scrollHeight;
+  } catch(e) {
+    document.getElementById('coach-loading').style.display='none';
+    const ab = document.createElement('div'); ab.className='chat-bubble bot'; ab.textContent='Verbindungsfehler. Nochmal versuchen.';
+    msgs.appendChild(ab);
+  }
+}
+
+// ============================================================
+// INIT
+// ============================================================
+async function initApp() {
+  initSupabase();
+  loadState();
+  if (useSupabase) await loadFromSupabase();
+  buildHome();
+  buildWeekSelector();
+  buildSupplements();
+  renderCheckinHistory();
+  buildQuickChips();
+}
+
+loadState();
+</script>
+</body>
+</html>
