@@ -1048,6 +1048,49 @@ async function initApp() {
 }
 
 loadState();
+
+  window.pinCurrent = '';
+
+window.pinPress = function(n) {
+  if (window.pinCurrent.length >= 4 || n === '') return;
+
+  window.pinCurrent += n;
+  updatePinDots();
+
+  if (window.pinCurrent.length === 4) {
+    setTimeout(() => {
+      if (window.pinCurrent === '1111') {
+        document.getElementById('pin-screen').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('bottom-nav').style.display = 'flex';
+        initApp();
+      } else {
+        document.querySelectorAll('.pin-dot').forEach(d => d.classList.add('error'));
+        document.getElementById('pin-error').textContent = 'Falscher PIN — versuche nochmal';
+
+        setTimeout(() => {
+          window.pinCurrent = '';
+          updatePinDots();
+          document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
+          document.getElementById('pin-error').textContent = '';
+        }, 1000);
+      }
+    }, 100);
+  }
+};
+
+window.pinDelete = function() {
+  window.pinCurrent = window.pinCurrent.slice(0, -1);
+  updatePinDots();
+};
+
+window.updatePinDots = function() {
+  document.querySelectorAll('.pin-dot').forEach((d, i) => {
+    d.classList.toggle('filled', i < window.pinCurrent.length);
+  });
+};
+
+    
 </script>
 </body>
 </html>
