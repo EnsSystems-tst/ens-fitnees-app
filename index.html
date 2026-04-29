@@ -1049,17 +1049,17 @@ async function initApp() {
 
 loadState();
 
-  window.pinCurrent = '';
+  function pinPress(n) {
+  console.log('PIN gedrückt:', n);
 
-window.pinPress = function(n) {
-  if (window.pinCurrent.length >= 4 || n === '') return;
+  if (pinCurrent.length >= 4 || n === '') return;
 
-  window.pinCurrent += n;
+  pinCurrent += n;
   updatePinDots();
 
-  if (window.pinCurrent.length === 4) {
+  if (pinCurrent.length === 4) {
     setTimeout(() => {
-      if (window.pinCurrent === '1111') {
+      if (pinCurrent === CORRECT_PIN) {
         document.getElementById('pin-screen').style.display = 'none';
         document.getElementById('app').style.display = 'block';
         document.getElementById('bottom-nav').style.display = 'flex';
@@ -1069,7 +1069,7 @@ window.pinPress = function(n) {
         document.getElementById('pin-error').textContent = 'Falscher PIN — versuche nochmal';
 
         setTimeout(() => {
-          window.pinCurrent = '';
+          pinCurrent = '';
           updatePinDots();
           document.querySelectorAll('.pin-dot').forEach(d => d.classList.remove('error'));
           document.getElementById('pin-error').textContent = '';
@@ -1077,18 +1077,18 @@ window.pinPress = function(n) {
       }
     }, 100);
   }
-};
+}
 
-window.pinDelete = function() {
-  window.pinCurrent = window.pinCurrent.slice(0, -1);
+function pinDelete() {
+  pinCurrent = pinCurrent.slice(0, -1);
   updatePinDots();
-};
+}
 
-window.updatePinDots = function() {
+function updatePinDots() {
   document.querySelectorAll('.pin-dot').forEach((d, i) => {
-    d.classList.toggle('filled', i < window.pinCurrent.length);
+    d.classList.toggle('filled', i < pinCurrent.length);
   });
-};
+}
 
     
 </script>
