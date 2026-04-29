@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>Ernes Fitness App</title>
+<title>Enes Fitness App</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
@@ -181,7 +181,7 @@
       <circle cx="18" cy="10" r="3"/>
     </svg>
   </div>
-  <div class="pin-title">Ernes Fitness</div>
+  <div class="pin-title">Enes Fitness</div>
   <div class="pin-sub">PIN eingeben um fortzufahren</div>
   <div class="pin-dots" id="pin-dots">
     <div class="pin-dot"></div>
@@ -218,7 +218,7 @@
     <div class="page-header">
       <div>
         <div style="font-size:13px;color:var(--text2)" id="today-label"></div>
-        <div style="font-size:21px;font-weight:700">Guten Morgen, Ernes</div>
+        <div style="font-size:21px;font-weight:700">Guten Morgen, Enes</div>
       </div>
       <div class="avatar">ES</div>
     </div>
@@ -314,7 +314,7 @@
   <div id="page-coach" class="page">
     <div class="page-header"><div style="font-size:21px;font-weight:700">KI-Coach</div></div>
     <div id="chat-messages">
-      <div class="chat-bubble bot">Hey Ernes! Ich kenne dein Profil vollständig — 119.6 kg, 31.4% Körperfett, Ziel: maximaler Fettabbau. Stell mir alles was du willst!</div>
+      <div class="chat-bubble bot">Hey Enes! Ich kenne dein Profil vollständig — 119.6 kg, 31.4% Körperfett, Ziel: maximaler Fettabbau. Stell mir alles was du willst!</div>
     </div>
     <div class="chip-row" id="quick-chips"></div>
     <div class="chat-input-row">
@@ -375,7 +375,7 @@
 // ============================================================
 // SUPABASE CONFIG — HIER DEINE KEYS EINTRAGEN
 // ============================================================
-const SUPABASE_URL = 'https://supabase.com/dashboard/project/propnrluhjljkdfgnpmg';
+const SUPABASE_URL = 'https://propnrluhjljkdfgnpmg.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tp0TrYsR7flNTgxdyrwW8g_BzSmWPyx';
 const USER_ID = 'enestst81@gmail.com';
 
@@ -383,13 +383,17 @@ let supabase = null;
 let useSupabase = false;
 
 function initSupabase() {
-  if (SUPABASE_URL !== 'YOUR_SUPABASE_URL') {
+  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
     try {
       supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       useSupabase = true;
-    } catch(e) { console.log('Supabase not available, using localStorage'); }
+      console.log('Supabase aktiv');
+    } catch (e) {
+      console.log('Supabase Fehler:', e);
+    }
   }
 }
+</script>
 
 // ============================================================
 // STATE — localStorage als Fallback, Supabase wenn konfiguriert
@@ -405,13 +409,13 @@ let ST = {
 
 function loadState() {
   try {
-    const s = localStorage.getItem('ernes_fit_v3');
+    const s = localStorage.getItem('Enes_fit_v3');
     if (s) ST = { ...ST, ...JSON.parse(s) };
   } catch(e) {}
 }
 
 function saveState() {
-  try { localStorage.setItem('ernes_fit_v3', JSON.stringify(ST)); } catch(e) {}
+  try { localStorage.setItem('Enes_fit_v3', JSON.stringify(ST)); } catch(e) {}
   if (useSupabase) syncToSupabase();
 }
 
@@ -506,7 +510,7 @@ const EXERCISE_INFO = {
   'Romanian Deadlift KH': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Romanian_Deadlift/0.jpg', muscle: 'Hamstrings / Po', tip: 'Rücken gerade, Hüfte geht zurück. Kurzhanteln nah am Körper. Bis Dehnung spüren, dann hoch.' },
   'Leg Extension': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Leg_Extensions/0.jpg', muscle: 'Quadrizeps Isolation', tip: 'Oben kurz halten (1 Sek), dann kontrolliert absenken. Oberschenkel nicht abheben.' },
   'Wadenheben Maschine': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Standing_Calf_Raises/0.jpg', muscle: 'Waden', tip: 'Volle Bewegung — ganz unten strecken, ganz oben drücken. Langsam für maximalen Effekt.' },
-  'Laufband': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Jogging%2C_Treadmill/0.jpg', muscle: 'Cardio / Fettverbrennung', tip: '30 Min bei 65–70% maximale HF. Ziel-HF für Ernes: ca. 128–135 BPM. Fettverbrennungszone.' },
+  'Laufband': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Jogging%2C_Treadmill/0.jpg', muscle: 'Cardio / Fettverbrennung', tip: '30 Min bei 65–70% maximale HF. Ziel-HF für Enes: ca. 128–135 BPM. Fettverbrennungszone.' },
   'Crosstrainer': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Elliptical_Trainer/0.jpg', muscle: 'Cardio / Ganzkörper', tip: 'Gelenksschonender als Laufband. Arme aktiv mitbewegen für mehr Kalorienverbrauch.' },
   'Stairmaster': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Stairmaster/0.jpg', muscle: 'Cardio / Beine / Po', tip: 'Sehr effektiv für Fettabbau und Po-Training gleichzeitig. Körper aufrecht halten, nicht aufstützen.' },
   'Lat Pulldown weit': { img: 'https://cdn.jsdelivr.net/gh/yuhonas/free-exercise-db@main/exercises/Wide-Grip_Lat_Pulldown/0.jpg', muscle: 'Rücken Breite', tip: 'Weiter Griff. Stange zur Brust — Schulterblätter zusammenführen. Langsam zurück.' },
@@ -846,7 +850,7 @@ function finishWorkout() {
   ST.workoutLog.unshift({date: today, week: ST.currentWeek});
   Object.keys(ST.exProg).forEach(k => { if(ST.exProg[k]) ST.exProg[k].done = false; });
   saveState();
-  alert('Super Ernes! Workout abgeschlossen 💪\nGewichte wurden für nächstes Mal angepasst.');
+  alert('Super Enes! Workout abgeschlossen 💪\nGewichte wurden für nächstes Mal angepasst.');
   goPage('page-home');
 }
 
@@ -985,7 +989,7 @@ async function sendCoach() {
   if (!ST.coachHistory) ST.coachHistory = [];
   ST.coachHistory.push({role:'user', content:q});
 
-  const sys = `Du bist der persönliche Fitness-Coach von Ernes Sivrikaya. Sein aktuelles Profil:
+  const sys = `Du bist der persönliche Fitness-Coach von Enes Sivrikaya. Sein aktuelles Profil:
 - Alter: 27 Jahre, männlich, Größe: 186 cm
 - Aktuelles Gewicht: ${ST.weight} kg, Körperfett: ${ST.kf}%
 - Ziel: 85 kg — maximaler Fettabbau in kürzester Zeit
@@ -1027,9 +1031,14 @@ Antworte kurz, motivierend, konkret auf Deutsch. Maximal 4–5 Sätze.`;
 // INIT
 // ============================================================
 async function initApp() {
-  initSupabase();
   loadState();
-  if (useSupabase) await loadFromSupabase();
+
+  initSupabase();
+
+  if (useSupabase) {
+    await loadFromSupabase();
+  }
+
   buildHome();
   buildWeekSelector();
   buildSupplements();
