@@ -379,19 +379,19 @@ const SUPABASE_URL = 'https://propnrluhjljkdfgnpmg.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tp0TrYsR7flNTgxdyrwW8g_BzSmWPyx';
 const USER_ID = 'enestst81@gmail.com';
 
-let supabase = null;
+let db = null;
 let useSupabase = false;
 
 function initSupabase() {
-  if (SUPABASE_URL && SUPABASE_ANON_KEY) {
-    try {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-      useSupabase = true;
-      console.log('Supabase aktiv');
-    } catch (e) {
-      console.log('Supabase Fehler:', e);
-    }
+  try {
+    db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    useSupabase = true;
+    console.log('Supabase aktiv');
+  } catch (e) {
+    console.log('Supabase Fehler:', e);
+    useSupabase = false;
   }
+}
 }
 </script>
 
@@ -422,7 +422,8 @@ function saveState() {
 async function syncToSupabase() {
   if (!supabase) return;
   try {
-    await supabase.from('app_state').upsert({
+    const { data } = await db
+  .from('app_state')
       user_id: USER_ID,
       state_json: JSON.stringify(ST),
       updated_at: new Date().toISOString()
@@ -906,7 +907,7 @@ function saveCheckin() {
   saveState();
 
   if (useSupabase && supabase) {
-    supabase.from('checkins').insert({
+    db.from('checkins').insert({
       user_id: USER_ID, date: new Date().toISOString(),
       weight: entry.weight, bauch: parseFloat(entry.bauch)||null,
       brust: parseFloat(entry.brust)||null, huefte: parseFloat(entry.huefte)||null,
