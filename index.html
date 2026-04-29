@@ -326,6 +326,7 @@
 const SUPABASE_URL = 'https://propnrluhjljkdfgnpmg.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_tp0TrYsR7flNTgxdyrwW8g_BzSmWPyx';
 const USER_ID = 'enestst81@gmail.com';
+const COACH_FN_URL = `${SUPABASE_URL}/functions/v1/coach`;
 
 let db = null;
 let useSupabase = false;
@@ -907,19 +908,38 @@ async function sendCoach() {
 - Bisherige Check-ins: ${ST.checkins?.length || 0}
 Antworte kurz, motivierend, konkret auf Deutsch. Maximal 4–5 Sätze.`;
 
+  function localCoachReply(question) {
+    const ql = question.toLowerCase();
+    if (ql.includes('protein')) return `Ziel für dich: ca. ${Math.round(ST.weight * 2)}–${Math.round(ST.weight * 2.2)} g Protein/Tag. Verteile es auf 3–5 Mahlzeiten, damit du im Defizit Muskelmasse hältst.`;
+    if (ql.includes('kreatin')) return 'Kreatin: täglich 5 g, Zeitpunkt ist zweitrangig. An Trainingstagen am besten rund ums Workout, an Pausentagen mit einer Mahlzeit.';
+    if (ql.includes('hdl')) return 'Für höheres HDL: 8–10k Schritte/Tag, 3–4x Krafttraining, Omega-3 täglich, weniger Zucker/Transfette und 7–8h Schlaf.';
+    if (ql.includes('bauch') || ql.includes('core')) return 'Für Core heute: Plank, Leg Raise und Cable Crunch (je nach Woche). Fokus auf saubere Technik und langsame Exzentrik.';
+    if (ql.includes('zeitplan') || ql.includes('85')) return `Du bist auf Kurs, wenn der Wochenschnitt bei ~0.7–1.3 kg Verlust liegt. Aktuell verbleiben etwa ${(ST.weight - 85).toFixed(1)} kg bis 85 kg.`;
+    return 'Stark, dass du dranbleibst. Halte heute Kaloriendefizit, Protein hoch und trainiere sauber mit Progression. Ein guter Tag reicht — viele gute Tage verändern alles.';
+  }
+
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',
-        max_tokens:1000,
-        system: sys,
-        messages: ST.coachHistory.slice(-8)
-      })
-    });
-    const data = await res.json();
-    const text = data.content?.find(b=>b.type==='text')?.text || 'Fehler beim Abrufen.';
+    let text = '';
+    try {
+      const res = await fetch(COACH_FN_URL, {
+        method:'POST',
+        headers:{
+          'Content-Type':'application/json',
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`
+        },
+        body: JSON.stringify({
+          userQuestion: q,
+          systemPrompt: sys,
+          history: ST.coachHistory.slice(-8)
+        })
+      });
+      if (!res.ok) throw new Error('Function response not OK');
+      const data = await res.json();
+      text = data?.text || '';
+    } catch(_) {
+      text = localCoachReply(q);
+    }
     ST.coachHistory.push({role:'assistant', content:text});
     if (ST.coachHistory.length > 20) ST.coachHistory = ST.coachHistory.slice(-20);
     saveState();
